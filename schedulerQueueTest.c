@@ -100,10 +100,15 @@ void test_remove_first_and_only_process(){
 	ASSERT(0 == removeProcess(queue));
 	ASSERT(NULL == queue->head);
 }
-// void test_remove_first_process_in_multiple(){
-// 	Status statusp1 = {0,1,0};
-// 	Process p1 = {"p1",1000,statusp1,5,NULL};
-// 	queue = create();
-// 	insertProcess(queue, &p1);
-// 	ASSERT(&p1 == getProcess(queue, "p1"));
-// }
+void test_remove_processes_in_middle(){
+	Status statusp1 = {0,1,0};
+	Process p1 = {"p1",1000,statusp1,1,NULL};
+	Process p2 = {"p2",0,statusp1,5,NULL};
+	Process p3 = {"p3",1000,statusp1,7,NULL};
+	queue = create();
+	insertProcess(queue, &p1);
+	insertProcess(queue, &p2);
+	insertProcess(queue, &p3);
+	ASSERT(2 == removeProcess(queue));
+	ASSERT(queue->head->next == &p3);
+}

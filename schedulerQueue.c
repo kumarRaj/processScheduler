@@ -35,6 +35,11 @@ int insertProcess(schedulerQueue *queue, Process *process){
 	process->next = NULL;
 	return ++queue->length;
 }
+int removeProcessHere(schedulerQueue *queue,Process *previous ,Process *next){
+	previous->next = next->next;
+	return --queue->length;
+}
+
 int removeProcess(schedulerQueue *queue){
 	Process *temp,*previous,*next;int i = 0;
 	temp = queue->head;
@@ -43,12 +48,12 @@ int removeProcess(schedulerQueue *queue){
 			queue->head = NULL;
 		return --queue->length;
 	}
-	// if()
-	// return 0;
-	// for(;temp->next != NULL;temp = temp->next){
-	// 	previous = temp;
-	// 	next = temp->next;
-	// }
+	for(;temp->next != NULL;temp = temp->next){
+		previous = temp;
+		next = temp->next;
+		if(next->pTime == 0)
+			return removeProcessHere(queue ,previous ,next);
+	}
 	// if(temp->next)
 			
 	// };
