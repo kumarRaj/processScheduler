@@ -79,6 +79,11 @@ int main(){
 		test_add_process_with_very_low_priority();
 	tearDown();
 	testEnded();
+	testStarted("test_remove_first_and_only_process");
+	setup();
+		test_remove_first_and_only_process();
+	tearDown();
+	testEnded();
 
 	summarizeTestCount();
 	fixtureTearDown();

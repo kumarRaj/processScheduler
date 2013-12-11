@@ -1,5 +1,6 @@
 #include "schedulerQueue.h"
 #include <stdlib.h>
+#include <string.h>
 schedulerQueue* create(){
 	schedulerQueue *queue = calloc(sizeof(schedulerQueue),1);
 	return queue;
@@ -34,7 +35,25 @@ int insertProcess(schedulerQueue *queue, Process *process){
 	process->next = NULL;
 	return ++queue->length;
 }
-
+int removeProcess(schedulerQueue *queue){
+	Process *temp,*previous,*next;int i = 0;
+	temp = queue->head;
+	if(queue->length == 1){
+		if(temp->pTime == 0)
+			queue->head = NULL;
+		return --queue->length;
+	}
+	// if()
+	// return 0;
+	// for(;temp->next != NULL;temp = temp->next){
+	// 	previous = temp;
+	// 	next = temp->next;
+	// }
+	// if(temp->next)
+			
+	// };
+	
+}
 void dispose(schedulerQueue *queue){
 	free(queue);
 }

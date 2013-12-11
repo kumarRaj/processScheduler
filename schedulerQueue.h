@@ -18,5 +18,5 @@ typedef struct{
 
 schedulerQueue* create();
 int insertProcess(schedulerQueue *queue,Process *process);
-int removeProcess(schedulerQueue *queue,char pname[256]);
+int removeProcess(schedulerQueue *queue);
 void dispose(schedulerQueue *queue);
