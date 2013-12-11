@@ -1,0 +1,21 @@
+[main] schedulerQueueTestRunner 1000 (0) exception: trapped!
+[main] schedulerQueueTestRunner 1000 (0) exception: code 0xC0000005 at 0x401CAE
+[main] schedulerQueueTestRunner 1000 (0) exception: ax 0x2 bx 0x244FDE0 cx 0xA dx 0x0
+[main] schedulerQueueTestRunner 1000 (0) exception: si 0x244FA20 di 0x244FB40 bp 0x244F8F0 sp 0x244F8E0
+[main] schedulerQueueTestRunner 1000 (0) exception: exception is: STATUS_ACCESS_VIOLATION
+[main] schedulerQueueTestRunner 1000 (0) stack: Stack trace:
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 0: sp = 0x244F480, pc = 0x6100A2C3
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 1: sp = 0x244F4BC, pc = 0x77DBB499
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 2: sp = 0x244F4E0, pc = 0x77DBB46B
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 3: sp = 0x244F590, pc = 0x77D70133
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 4: sp = 0x244F8F0, pc = 0x401A8D
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 5: sp = 0x244FDB8, pc = 0x4012F0
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 6: sp = 0x244FDC0, pc = 0x61004402
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 7: sp = 0x244FF50, pc = 0x61004420
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 8: sp = 0x244FF5C, pc = 0x401E1E
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 9: sp = 0x244FF6C, pc = 0x40103A
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 10: sp = 0x244FF88, pc = 0x76BD336A
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 11: sp = 0x244FF94, pc = 0x77D99F72
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 12: sp = 0x244FFD4, pc = 0x77D99F45
+[main] schedulerQueueTestRunner 1000 (0) stack: frame 13: sp = 0x244FFEC, pc = 0x0
+[main] schedulerQueueTestRunner 1000 (0) stack: End of stack trace
