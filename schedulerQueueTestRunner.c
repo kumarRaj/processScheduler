@@ -64,9 +64,19 @@ int main(){
 		test_add_process_with_priority_higher_than_first_process();
 	tearDown();
 	testEnded();
+	testStarted("test_add_process_with_priority_somewhere_in_between_process_queue_only_2_elements");
+	setup();
+		test_add_process_with_priority_somewhere_in_between_process_queue_only_2_elements();
+	tearDown();
+	testEnded();
 	testStarted("test_add_process_with_priority_somewhere_in_between_process_queue");
 	setup();
 		test_add_process_with_priority_somewhere_in_between_process_queue();
+	tearDown();
+	testEnded();
+	testStarted("test_add_process_with_very_low_priority");
+	setup();
+		test_add_process_with_very_low_priority();
 	tearDown();
 	testEnded();
 

@@ -112,6 +112,6 @@ external_libs=`for arg in $*; do
 		printf " " parts[2]
 	}'
 done`
-compile_testRunner="gcc -o $testRunnerExe $testRunnerSource $testSource $source $external_libs"
+compile_testRunner="gcc -g -o $testRunnerExe $testRunnerSource $testSource $source $external_libs"
 $compile_testRunner
 $testRunnerExe

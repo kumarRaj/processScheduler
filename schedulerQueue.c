@@ -18,28 +18,21 @@ int insertProcessHere(schedulerQueue *queue,Process *previous,Process *process ,
 	return ++queue->length;
 }
 int insertProcess(schedulerQueue *queue, Process *process){
-	Process *previous,*next,*temp;
+	Process *previous,*next,*temp;int i = 0;
 	temp = queue->head;
 	if(queue->length == 0)		
 		return insertAtStart(queue, process);
 	if(process->pPriority < temp->pPriority)
 		return insertAtStart(queue, process);
-	// printf("%p\n", temp->next);
-	for(;temp != NULL;temp = temp->next){
+	for(;temp->next != NULL;temp = temp->next){
 		previous = temp;
 		next = temp->next;
 		if(process->pPriority < next->pPriority)
 			return insertProcessHere(queue ,previous, process ,next);
 	};
-	
-	// for(temp = queue->head;temp->next != NULL;temp = temp->next){
-	// 	previous = temp;
-	// 	next = temp->next;
-	// 	if(process->pPriority < temp->pPriority)
-	// 		return insertProcessHere(queue ,previous, process,next);
-	// };
-	// insertProcess(schedulerQueue *queue, Process *process)
-	return 0;
+	temp->next = process;
+	process->next = NULL;
+	return ++queue->length;
 }
 
 void dispose(schedulerQueue *queue){
