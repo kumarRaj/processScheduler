@@ -89,6 +89,11 @@ int main(){
 		test_remove_processes_in_middle();
 	tearDown();
 	testEnded();
+	testStarted("test_remove_last_process");
+	setup();
+		test_remove_last_process();
+	tearDown();
+	testEnded();
 
 	summarizeTestCount();
 	fixtureTearDown();
