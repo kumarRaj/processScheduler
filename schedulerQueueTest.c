@@ -94,7 +94,6 @@ void test_add_process_with_very_low_priority(){
 void test_remove_first_and_only_process(){
 	Status statusp1 = {0,1,0};
 	Process p1 = {"p1",0,statusp1,5,NULL};
-	// printf("%d\n", p1.pTime);
 	queue = create();
 	insertProcess(queue, &p1);
 	ASSERT(0 == removeProcess(queue));
@@ -123,4 +122,16 @@ void test_remove_last_process(){
 	insertProcess(queue, &p3);
 	ASSERT(2 == removeProcess(queue));
 	ASSERT(queue->head->next->next == NULL);
+}
+void test_remove_first_in_many(){
+	Status statusp1 = {0,1,0};
+	Process p1 = {"p1",0,statusp1,1,NULL};
+	Process p2 = {"p2",10,statusp1,5,NULL};
+	Process p3 = {"p3",65,statusp1,7,NULL};
+	queue = create();
+	insertProcess(queue, &p1);
+	insertProcess(queue, &p2);
+	insertProcess(queue, &p3);
+	ASSERT(2 == removeProcess(queue));
+	ASSERT(queue->head == &p2);
 }

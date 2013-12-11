@@ -94,6 +94,11 @@ int main(){
 		test_remove_last_process();
 	tearDown();
 	testEnded();
+	testStarted("test_remove_first_in_many");
+	setup();
+		test_remove_first_in_many();
+	tearDown();
+	testEnded();
 
 	summarizeTestCount();
 	fixtureTearDown();

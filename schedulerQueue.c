@@ -43,11 +43,14 @@ int removeProcessHere(schedulerQueue *queue,Process *previous ,Process *next){
 int removeProcess(schedulerQueue *queue){
 	Process *temp,*previous,*next;int i = 0;
 	temp = queue->head;
+
 	if(queue->length == 1){
 		if(temp->pTime == 0)
 			queue->head = NULL;
 		return --queue->length;
 	}
+	if(temp->pTime == 0)
+		queue->head = temp->next;
 	for(;temp->next != NULL;temp = temp->next){
 		previous = temp;
 		next = temp->next;
