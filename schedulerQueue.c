@@ -54,10 +54,11 @@ int removeProcess(schedulerQueue *queue){
 		if(next->pTime == 0)
 			return removeProcessHere(queue ,previous ,next);
 	}
-	// if(temp->next)
-			
-	// };
-	
+	if(NULL == temp->next){
+		previous->next = NULL;
+		return --queue->length;
+	};
+	return 0;
 }
 void dispose(schedulerQueue *queue){
 	free(queue);

@@ -112,3 +112,15 @@ void test_remove_processes_in_middle(){
 	ASSERT(2 == removeProcess(queue));
 	ASSERT(queue->head->next == &p3);
 }
+void test_remove_last_process(){
+	Status statusp1 = {0,1,0};
+	Process p1 = {"p1",1000,statusp1,1,NULL};
+	Process p2 = {"p2",10,statusp1,5,NULL};
+	Process p3 = {"p3",0,statusp1,7,NULL};
+	queue = create();
+	insertProcess(queue, &p1);
+	insertProcess(queue, &p2);
+	insertProcess(queue, &p3);
+	ASSERT(2 == removeProcess(queue));
+	ASSERT(queue->head->next->next == NULL);
+}
