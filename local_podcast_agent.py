@@ -19,7 +19,8 @@ import uuid
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1] / "open-podcast"
+DEFAULT_OPEN_PODCAST_DIR = Path(__file__).resolve().parents[1] / "open-podcast"
+ROOT = DEFAULT_OPEN_PODCAST_DIR
 API = "http://127.0.0.1:5055/api"
 POLL_SECONDS = 15
 
@@ -127,6 +128,7 @@ def safe_name(name: str) -> str:
 
 
 def main() -> int:
+    global ROOT
     parser = argparse.ArgumentParser(description="Autonomously make a local podcast from a PDF or text document.")
     parser.add_argument("source", type=Path, help="PDF, TXT, Markdown, CSV, or JSON source document")
     parser.add_argument("--title", help="Episode title (defaults to the source filename)")
@@ -134,11 +136,19 @@ def main() -> int:
                         help="Where finished MP3s are written (default: ~/Downloads)")
     parser.add_argument("--no-start-services", action="store_true",
                         help="Fail if the local stack is not already running")
+    parser.add_argument("--open-podcast-dir", type=Path, default=DEFAULT_OPEN_PODCAST_DIR,
+                        help="Open Podcast checkout (default: ../open-podcast next to this repository)")
     args = parser.parse_args()
 
     source = args.source.expanduser().resolve()
     if not source.is_file():
         raise AgentError(f"Source file does not exist: {source}")
+    ROOT = args.open_podcast_dir.expanduser().resolve()
+    if not (ROOT / "docker-compose.yml").is_file():
+        raise AgentError(
+            f"Open Podcast checkout not found at {ROOT}. "
+            "Pass --open-podcast-dir /path/to/open-podcast."
+        )
     title = args.title or source.stem
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
