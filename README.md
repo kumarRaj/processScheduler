@@ -5,7 +5,7 @@
 Run it with a local document:
 
 ```bash
-cd /Users/rkumar1/workspace/personal/podcast/local-podcast-agent
+cd /path/to/local-podcast-agent
 python3 local_podcast_agent.py "/path/to/document.pdf"
 ```
 
