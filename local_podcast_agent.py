@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -20,8 +21,10 @@ from pathlib import Path
 
 
 DEFAULT_OPEN_PODCAST_DIR = Path(__file__).resolve().parents[1] / "open-podcast"
+DEFAULT_KOKORO_NATIVE_DIR = Path(__file__).resolve().parents[1] / "kokoro-fastapi"
 ROOT = DEFAULT_OPEN_PODCAST_DIR
 API = "http://127.0.0.1:5055/api"
+NATIVE_KOKORO_URL = "http://127.0.0.1:8881/v1/models"
 POLL_SECONDS = 15
 
 
@@ -75,21 +78,73 @@ def run(command: list[str], *, cwd: Path | None = None) -> None:
     subprocess.run(command, cwd=cwd, check=True)
 
 
-def ensure_services() -> None:
-    """Start the local stack when it is not already running."""
+def native_kokoro_is_ready() -> bool:
+    try:
+        with urllib.request.urlopen(NATIVE_KOKORO_URL, timeout=3) as response:
+            return response.status == 200
+    except urllib.error.URLError:
+        return False
+
+
+def start_native_kokoro(kokoro_dir: Path) -> subprocess.Popen[bytes] | None:
+    """Start native Kokoro for this run, returning only a process we own."""
+    if native_kokoro_is_ready():
+        say("Using the already-running native Kokoro TTS service.")
+        return None
+
+    executable = kokoro_dir / ".venv" / "bin" / "uvicorn"
+    if not executable.is_file():
+        raise AgentError(
+            f"Native Kokoro is not installed at {kokoro_dir}. "
+            "Pass --kokoro-native-dir or complete the one-time native Kokoro setup."
+        )
+    environment = os.environ | {
+        "USE_GPU": "true",
+        "DEVICE_TYPE": "mps",
+        "PYTORCH_ENABLE_MPS_FALLBACK": "1",
+        "PYTHONPATH": f"{kokoro_dir}:{kokoro_dir / 'api'}",
+        "MODEL_DIR": "src/models",
+        "VOICES_DIR": "src/voices/v1_0",
+        "WEB_PLAYER_PATH": str(kokoro_dir / "web"),
+    }
+    say("Starting native Apple Silicon Kokoro TTS for this generation.")
+    process = subprocess.Popen(
+        [str(executable), "api.src.main:app", "--host", "0.0.0.0", "--port", "8881"],
+        cwd=kokoro_dir,
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(24):
+        if native_kokoro_is_ready():
+            return process
+        if process.poll() is not None:
+            raise AgentError("Native Kokoro exited while starting. Check its local installation.")
+        time.sleep(5)
+    process.terminate()
+    raise AgentError("Native Kokoro did not become ready within two minutes.")
+
+
+def stop_native_kokoro(process: subprocess.Popen[bytes] | None) -> None:
+    if process is None or process.poll() is not None:
+        return
+    say("Stopping native Kokoro TTS started for this generation.")
+    process.terminate()
+    try:
+        process.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        process.kill()
+
+
+def ensure_services(kokoro_dir: Path) -> subprocess.Popen[bytes] | None:
+    """Start Open Podcast and a native TTS service for this generation."""
     try:
         subprocess.run(["colima", "status"], stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, check=True)
     except (FileNotFoundError, subprocess.CalledProcessError):
-        run(["colima", "start", "--memory", "8"])
+        run(["colima", "start", "--cpu", "6", "--memory", "8"])
     run(["docker", "compose", "up", "-d"], cwd=ROOT)
-    result = subprocess.run(["docker", "inspect", "-f", "{{.State.Running}}", "kokoro-tts"],
-                            capture_output=True, text=True)
-    if result.returncode == 0 and result.stdout.strip() != "true":
-        run(["docker", "start", "kokoro-tts"])
-    elif result.returncode != 0:
-        run(["docker", "run", "-d", "--name", "kokoro-tts", "-p", "8880:8880",
-             "ghcr.io/remsky/kokoro-fastapi-cpu:latest"])
+    return start_native_kokoro(kokoro_dir)
 
 
 def wait_for_api() -> None:
@@ -138,12 +193,15 @@ def main() -> int:
                         help="Fail if the local stack is not already running")
     parser.add_argument("--open-podcast-dir", type=Path, default=DEFAULT_OPEN_PODCAST_DIR,
                         help="Open Podcast checkout (default: ../open-podcast next to this repository)")
+    parser.add_argument("--kokoro-native-dir", type=Path, default=DEFAULT_KOKORO_NATIVE_DIR,
+                        help="Native Kokoro checkout (default: ../kokoro-fastapi next to this repository)")
     args = parser.parse_args()
 
     source = args.source.expanduser().resolve()
     if not source.is_file():
         raise AgentError(f"Source file does not exist: {source}")
     ROOT = args.open_podcast_dir.expanduser().resolve()
+    kokoro_dir = args.kokoro_native_dir.expanduser().resolve()
     if not (ROOT / "docker-compose.yml").is_file():
         raise AgentError(
             f"Open Podcast checkout not found at {ROOT}. "
@@ -153,71 +211,75 @@ def main() -> int:
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not args.no_start_services:
-        ensure_services()
-    wait_for_api()
-    require_profiles()
+    native_kokoro_process = None
+    try:
+        if not args.no_start_services:
+            native_kokoro_process = ensure_services(kokoro_dir)
+        wait_for_api()
+        require_profiles()
 
-    say("Creating a notebook and importing the document into Open Podcast.")
-    notebook = request("POST", "/notebooks", json.dumps({
+        say("Creating a notebook and importing the document into Open Podcast.")
+        notebook = request("POST", "/notebooks", json.dumps({
         "name": title, "description": f"Autonomous local podcast source: {source.name}"
-    }).encode(), "application/json")
-    notebook_id = notebook["id"]
-    payload, content_type = multipart({
+        }).encode(), "application/json")
+        notebook_id = notebook["id"]
+        payload, content_type = multipart({
         "type": "upload", "notebooks": json.dumps([notebook_id]), "title": title,
         "embed": "false", "async_processing": "false", "delete_source": "false",
-    }, "file", source)
-    imported = request("POST", "/sources", payload, content_type)
-    if not imported.get("id") or not (imported.get("full_text") or "").strip():
-        raise AgentError("Document import returned no extracted text; refusing to generate an empty episode.")
-    say(f"Validated source extraction ({len(imported['full_text'])} characters).")
+        }, "file", source)
+        imported = request("POST", "/sources", payload, content_type)
+        if not imported.get("id") or not (imported.get("full_text") or "").strip():
+            raise AgentError("Document import returned no extracted text; refusing to generate an empty episode.")
+        say(f"Validated source extraction ({len(imported['full_text'])} characters).")
 
-    briefing = (
+        briefing = (
         "Use the supplied document as the sole factual source. Do not claim personal "
         "production experience or invent examples, statistics, or citations. Explain "
         "requirements, architecture, bottlenecks, and trade-offs in plain, rigorous language."
-    )
-    say("Writing the discussion and rendering local voice clips. This can take several minutes.")
-    job = request("POST", "/podcasts/generate", json.dumps({
+        )
+        say("Writing the discussion and rendering local voice clips. This can take several minutes.")
+        job = request("POST", "/podcasts/generate", json.dumps({
         "episode_profile": "tech_discussion", "speaker_profile": "tech_experts",
         "episode_name": title, "notebook_id": notebook_id, "briefing_suffix": briefing,
-    }).encode(), "application/json")
-    job_id = job["job_id"]
+        }).encode(), "application/json")
+        job_id = job["job_id"]
 
-    while True:
-        status = request("GET", f"/podcasts/jobs/{job_id}")
-        state = status.get("status", "unknown")
-        say(f"Generation status: {state}")
-        if state == "completed":
-            result = status.get("result") or {}
-            episode_id = result.get("episode_id")
-            if not episode_id:
-                raise AgentError("The generation completed but did not return an episode ID.")
-            break
-        if state in {"failed", "error", "cancelled"}:
-            raise AgentError(status.get("error_message") or f"Generation ended with status {state}.")
-        time.sleep(POLL_SECONDS)
+        while True:
+            status = request("GET", f"/podcasts/jobs/{job_id}")
+            state = status.get("status", "unknown")
+            say(f"Generation status: {state}")
+            if state == "completed":
+                result = status.get("result") or {}
+                episode_id = result.get("episode_id")
+                if not episode_id:
+                    raise AgentError("The generation completed but did not return an episode ID.")
+                break
+            if state in {"failed", "error", "cancelled"}:
+                raise AgentError(status.get("error_message") or f"Generation ended with status {state}.")
+            time.sleep(POLL_SECONDS)
 
-    base = safe_name(title)
-    mp3 = output_dir / f"{base}.mp3"
-    spotify = output_dir / f"{base}_spotify.mp3"
-    say(f"Downloading completed audio to {mp3}")
-    audio = request("GET", f"/podcasts/episodes/{episode_id}/audio")
-    assert isinstance(audio, bytes)
-    if len(audio) < 1_024:
-        raise AgentError("Completed episode returned an unexpectedly small audio file.")
-    mp3.write_bytes(audio)
-    say("Validating the downloaded MP3.")
-    run(["ffprobe", "-v", "error", "-show_entries", "format=duration,size",
-         "-of", "default=noprint_wrappers=1", str(mp3)])
-    run(["ffmpeg", "-y", "-i", str(mp3), "-map_metadata", "-1", "-codec:a", "libmp3lame",
-         "-b:a", "128k", "-ar", "44100", "-ac", "2", "-write_xing", "0", str(spotify)])
-    say("Validating the Spotify-ready MP3.")
-    run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,bit_rate,sample_rate,channels",
-         "-of", "default=noprint_wrappers=1", str(spotify)])
-    say(f"Finished. Standard MP3: {mp3}")
-    say(f"Spotify-ready MP3: {spotify}")
-    return 0
+        base = safe_name(title)
+        mp3 = output_dir / f"{base}.mp3"
+        spotify = output_dir / f"{base}_spotify.mp3"
+        say(f"Downloading completed audio to {mp3}")
+        audio = request("GET", f"/podcasts/episodes/{episode_id}/audio")
+        assert isinstance(audio, bytes)
+        if len(audio) < 1_024:
+            raise AgentError("Completed episode returned an unexpectedly small audio file.")
+        mp3.write_bytes(audio)
+        say("Validating the downloaded MP3.")
+        run(["ffprobe", "-v", "error", "-show_entries", "format=duration,size",
+             "-of", "default=noprint_wrappers=1", str(mp3)])
+        run(["ffmpeg", "-y", "-i", str(mp3), "-map_metadata", "-1", "-codec:a", "libmp3lame",
+             "-b:a", "128k", "-ar", "44100", "-ac", "2", "-write_xing", "0", str(spotify)])
+        say("Validating the Spotify-ready MP3.")
+        run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,bit_rate,sample_rate,channels",
+             "-of", "default=noprint_wrappers=1", str(spotify)])
+        say(f"Finished. Standard MP3: {mp3}")
+        say(f"Spotify-ready MP3: {spotify}")
+        return 0
+    finally:
+        stop_native_kokoro(native_kokoro_process)
 
 
 if __name__ == "__main__":
