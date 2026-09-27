@@ -1,0 +1,12 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Generated podcast output
+test-output/
+*.mp3
+
+# Local environment files
+.env
+.env.*
+!.env.example
